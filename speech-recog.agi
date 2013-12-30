@@ -113,7 +113,6 @@ my $ua_timeout = 10;
 my $tmpdir     = "/tmp";
 my $host       = "www.google.com/speech-api/v1/recognize";
 my $flac       = `/usr/bin/which flac`;
-my $speex      = `/usr/bin/which speexenc`;
 
 # Store AGI input #
 while (<STDIN>) {
@@ -139,15 +138,11 @@ foreach (keys %response) {
 }
 
 # Abort if required programs not found. #
-if ($use_speex) {
-	die "$name speexenc is missing. Aborting.\n" if (!$speex);
-	chomp($speex);
-	warn "$name Found speexenc in: $speex\n" if ($debug);
-} else {
+
 	die "$name flac is missing. Aborting.\n" if (!$flac);
 	chomp($flac);
 	warn "$name Found flac in: $flac\n" if ($debug);
-}
+
 
 # Setting language, timeout, interrupt keys and BEEP indication #
 if (length($AGI{arg_1})) {
@@ -219,22 +214,10 @@ print "RECORD FILE $tmpname $format \"$intkey\" \"-1\" $beep \"$silence\"\n";
 @result = checkresponse();
 die "$name Failed to record file, aborting...\n" if ($result[0] == -1);
 
-if ($debug) {
-	warn "$name Recording Format: $format, Rate: $samplerate Hz, ",
-		"Encoding format: ", ($use_speex) ? "speex" : "flac", "\n",
-		"$name Languge: $language, SSL: ", ($use_ssl) ? "yes, " : "no, ",
-		"$silence, Interrupt keys: $intkey\n";
-}
+
 
 # Encode sound data #
-if ($use_speex) {
-	$filetype = "x-speex-with-header-byte";
-	$endian = (unpack("h*", pack("s", 1)) =~ /01/) ? "--be" : "--le";
-	# Encode file to speex. #
-	system($speex, "--vbr", "--rate", $samplerate, "--headerbyte", "--quiet", $endian,
-		"$tmpname.$format", "$tmpname.spx") == 0 or die "$name $speex failed: $?\n";
-	open($fh, "<", "$tmpname.spx") or die "Can't read file: $!";
-} else {
+
 	$filetype = "x-flac";
 	$endian = (unpack("h*", pack("s", 1)) =~ /01/) ? "big" : "little";
 	# Encode file to flac. #
@@ -242,7 +225,7 @@ if ($use_speex) {
 		"--sign=signed", "--bps=16", "--force-raw-format", "--sample-rate=$samplerate",
 		"$tmpname.$format") == 0 or die "$name $flac failed: $?\n";
 	open($fh, "<", "$tmpname.flac") or die "Can't read file: $!";
-}
+
 
 $audio = do { local $/; <$fh> };
 close($fh);
