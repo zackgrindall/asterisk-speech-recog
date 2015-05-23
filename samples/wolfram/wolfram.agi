@@ -166,6 +166,7 @@ sub add_answer {
 }
 
 # Store answers in channel variable. #
+# test
 sub return_var {
 	my $text = shift;
 	warn "$name Setting $var_name to $text\n" if ($debug);
